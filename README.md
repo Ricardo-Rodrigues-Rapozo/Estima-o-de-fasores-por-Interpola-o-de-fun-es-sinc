@@ -1,5 +1,7 @@
 # Syncrophasor Project
-
+* Autor: Ricardo Rodrigues Rapozo
+* Mike 
+* [LinkedIn](www.linkedin.com/in/ricardo-rodrigues-rapozo-569560227)  
 ## Descrição do Projeto
 
 Este projeto busca validar o método de estimação de fasores do artigo "Dynamic Harmonic Synchrophasor Estimator Based on Sinc Interpolation Functions", implementando a estimação em Python.
