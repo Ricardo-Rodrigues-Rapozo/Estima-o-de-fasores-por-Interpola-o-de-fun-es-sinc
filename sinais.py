@@ -4,37 +4,26 @@ from matplotlib import pyplot as plt
 
 
 def signal_frequency(f1, N, f0, Fs, Frep, hmax, hmag, SNR):
-    """
-    Gera sinais para o teste Signal Frequency segundo a norma IEC/IEEE 60255-118.
+    """ Gera sinais para o teste Signal Frequency segundo a norma IEC/IEEE 60255-118
+    Parameters:
+    -----------
+        f1 (float): Frequência do sinal
+        N (integer): Número de pontos do sinal gerado
+        f0 (float): Frequência nominal
+        Fs (float): Frequência de Amostragem
+        Frep (float): Frequência de Reporte
 
-    Parameters
-    ----------
-    f1 : (float) = Frequência do sinal principal em Hz.
-    N : (int) = Número de pontos do sinal gerado.
-    f0 : (float) = Frequência nominal em Hz.
-    Fs : (float) = Frequência de amostragem em Hz.
-    Frep : (float) = Frequência de reporte em Hz.
-    hmax : (int) = Número máximo de harmônicos a serem incluídos no sinal.
-    hmag : (float) = Magnitude dos harmônicos.
-    SNR : (float) = Relação sinal-ruído em dB.
-
-    Returns
-    -------
-    x : (numpy.ndarray) = Sinal gerado incluindo harmônicos e ruído.
-    X : (numpy.ndarray) = Representação dos harmônicos no domínio da frequência.
-    f : (numpy.ndarray) = Frequência do sinal (constante) para cada ponto.
-    ROCOF : (numpy.ndarray) = Taxa de variação da frequência (nula neste caso).
-
-    Raises
-    ------
-    TypeError
-        Se a frequência do sinal estiver fora do intervalo estipulado pela norma,
-        conforme a frequência de reporte.
+    Returns:
+    --------
+        x (array ): Amplitude do sinal
+        X (complex array): Frequência do sinal
+        f (array): Número de pontos do sinal gerado
+        ROCOF (array): Frequência nominal
     """
 
     status = True
     if Frep < 10:
-        if abs(f1-f0) > 2: 
+        if abs(f1-f0) > 2:
             raise TypeError('Frequencia do sinal fora do intervalo estipulado pela norma')
     elif Frep < 25:
         if abs(f1-f0) > Frep/5:
@@ -43,25 +32,35 @@ def signal_frequency(f1, N, f0, Fs, Frep, hmax, hmag, SNR):
         if Frep >= 25:
             if abs(f1-f0) > 5:
                 raise TypeError('Frequencia do sinal fora do intervalo estipulado pela norma') 
+    
     if(status == False):
         return 0
     else:
         t = np.arange(N)/Fs
-        var_ruido = (1/2)(10*(-SNR/10))
+        var_ruido = (1/2)*(10**(-SNR/10))
         ruido = np.sqrt(var_ruido)*np.random.randn(len(t))
+
+
         phi = 0#np.random.uniform(-np.pi,np.pi)
+
         x = np.cos(2*np.pi*f1*t + phi)
+
         X = np.zeros((hmax,len(t))) + 1j*np.zeros((hmax,len(t)))
-        X[0,:] = (1/np.sqrt(2))*np.exp(1j(2*np.pi*(f1-f0)*t + phi))
+        X[0,:] = (1/np.sqrt(2))*np.exp(1j*(2*np.pi*(f1-f0)*t + phi))
+
         for hh in range(2,hmax+1):
             phi = 0#np.random.uniform(-np.pi,np.pi)
-            x = x + hmag*np.cos(2*np.pi*hh*f1*t + phi)            
-            X[hh-1,:] = (hmag/np.sqrt(2))*np.exp(1j(2*np.pi*hh*(f1-f0)*t + phi))
+            x = x + hmag*np.cos(2*np.pi*hh*f1*t + phi)
+            
+            X[hh-1,:] = (hmag/np.sqrt(2))*np.exp(1j*(2*np.pi*hh*(f1-f0)*t + phi))
+        
         x = x + ruido
+
         f = f1*np.ones(len(x))
         ROCOF = np.zeros(len(x))
-        return (x, X, f, ROCOF)
 
+        return (x, X, f, ROCOF)
+    
 
 
 

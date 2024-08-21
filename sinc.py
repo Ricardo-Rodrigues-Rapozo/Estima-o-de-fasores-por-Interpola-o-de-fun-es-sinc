@@ -86,30 +86,49 @@ def phi_im(t, B_h, k, f0, h):
     Returns:
         float: Parte imaginária da função phi.
     """
-    term = np.exp(-1j * (2 * np.pi * h * f0 * t))
-    phi_im = (np.sin(np.pi * (B_h * t - k)) / (np.pi * (2 * B_h * t - k))) * term
-    return np.imag(phi_im)
+    
+    ind = 0
+    phik_h = np.zeros((len(t),h*(2*k+1))) + 1j*np.zeros((len(t),h*(2*k+1)))
+    
+    for H in range(h):
+        for kk in np.arange(-k,k+1):
+            phik_h[:,ind] = (np.sin(np.pi*(2*B_h*t-k))/(np.pi*(2*B_h*t-k)))*np.exp(-1j * (2 * np.pi * (H+1) * f0 * t))
+            ind = ind+1
+    
+    # for K in range(k):
+    #     for H in range(h):
+    #         for i in range(len(t)):
+    #             term = np.exp(1j * (2 * np.pi * H * f0 * t[i]))
+    #             phi_re = (np.sin(np.pi * (B_h * t[i] - K)) / (np.pi * (2 * B_h * t - K))) * term
+    return phik_h
 
 
 
-def Filter_bank(phi_real, phi_im, phk):
-    """Aplica o banco de filtros em relação aos vetores fornecidos.
-
-    Args:
-        phi_real (np.array): Vetor real (R).
-        phi_im (np.array): Vetor imaginário (I).
-        phk (np.array): Vetor de amostras do sinal (pK).
-
-    Returns:
-        np.array: Resultado da operação de filtro.
+def plus_column(m1,m2):
     """
-    # Converte os vetores em colunas (vetores coluna)
-    ar1 = np.array([phi_real]).T
-    ar2 = np.array([phi_im]).T
-    ar3 = np.array([phk]).T
-    ar4 = np.array([np.conj(phk)]).T
+    A func np.c_ basicamente cria duas colunas com os arrays informados
+    entao m vai ser a uniao horizontal de m1 e m2
+    Args:
+    m1,m2(ndarray): matrizes de tamanhos hxc  e hxc
+
+    return: 
+    m(ndarray): Matriz com tamanho hx(c+c)
+    """
+
+    m = np.c_[m1, m2]
+    return m 
+
+def pseudo_inversa(m):
+    """Realiza a pseudo inversa de uma matriz nao quadrada lxc 
+    e retorna a matriz inversa de tamanho cxl
+
+    Args : 
+    m(ndarray): Matriz 
+
+    return:
+    m1(ndarray): Matriz invertida
     
-    # Aplica a expressão √2/2 * [ R I ] [ pK ; p*K ]
-    result = (np.sqrt(2)/2) * (ar1 * ar3 + ar2 * ar4)
-    
-    return result
+    """
+
+    m1 = np.linalg.pinv(m)
+    return m1

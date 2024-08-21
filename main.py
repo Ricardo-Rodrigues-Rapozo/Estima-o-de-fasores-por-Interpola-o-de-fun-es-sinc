@@ -15,7 +15,7 @@ Dynamic Harmonic Synchrophasor Estimator Based on Sinc Interpolation Functions
 ##     Parâmetros do teste 
 ## ----------------------------------------------------------------------------------------------------------------------------------------------------
 f0 = 50.0  # Frequência fundamental em Hz
-Fs = 10000 # Frequencia de amostragem 
+Fs = 10100 # Frequencia de amostragem 
 N0 = Fs/f0  #número de amostras por ciclo do sinal, ou seja, quantas amostras são capturadas durante um ciclo completo do sinal de frequência nominal f0
 Ns = 50*N0
 Ts = 1/Fs  # Período de amostragem em segundos
@@ -52,24 +52,17 @@ x = np.sqrt(2)*x
 # plt.show()
 
 
-
-# plt.figure()
-# plt.plot((np.angle(X[0,:])))
-# plt.show()
-#print(X.shape)
-
-#ah,fase = sinc.dadosVect(X) ##vetor de harmonicos
-#print(ah.shape)
-#ph = sinc.fasor_harmonico(t,ah,fase)
-#print(ph.shape)
-
-
-
-
-
 ## ------------certo ---
 phi_real = sinc.phi_real(tf, B_h, k, f0, hmax)
-print(phi_real.shape)
+#print(phi_real.shape)
+phi_im = sinc.phi_im(tf, B_h, k, f0, hmax)
+#print(phi_im.shape)
+
+#
+#print(sinc.plus_column(phi_real,phi_im).shape)
+#print(sinc.pseudo_inversa(sinc.plus_column(phi_real,phi_im)).shape) 
+#print(t.reshape((202,50)).shape) # vetor de tempo em 50 janelas
+p_est =  (2/np.sqrt(2))*sinc.pseudo_inversa(sinc.plus_column(phi_real,phi_im)) @ x.reshape((202,50))
+print(type(p_est))
 
 
-    
