@@ -1,6 +1,6 @@
 # Syncrophasor Project
 * Autor: Ricardo Rodrigues Rapozo
-* Autor : Mike 
+* Autor : Mayk Alves Lamim
 * [LinkedIn](www.linkedin.com/in/ricardo-rodrigues-rapozo-569560227)  
 ## Descrição do Projeto
 
