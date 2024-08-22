@@ -63,6 +63,6 @@ phi_im = sinc.phi_im(tf, B_h, k, f0, hmax)
 #print(sinc.pseudo_inversa(sinc.plus_column(phi_real,phi_im)).shape) 
 #print(t.reshape((202,50)).shape) # vetor de tempo em 50 janelas
 p_est =  (2/np.sqrt(2))*sinc.pseudo_inversa(sinc.plus_column(phi_real,phi_im)) @ x.reshape((202,50))
-print(type(p_est))
+#print("numero de linhas ",p_est.shape[0], "numero de colunas",p_est.shape[1])
 
 
