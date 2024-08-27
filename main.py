@@ -21,15 +21,11 @@ Fs = 10000   # Frequencia de amostragem
 N0 = Fs/f0   #número de amostras por ciclo do sinal, ou seja, quantas amostras são capturadas durante um ciclo completo do sinal de frequência nominal f0
 Ns = 60*N0   #número total de amostras do sinal
 Ts = 1/Fs    # Período de amostragem em segundos
-
 T0 = 1/f0
 Tw = 3/f0
 Nw = int(N0*(Tw/T0) + 1)
-
-
 K = 1        # Número de amostras ao redor da amostra central
 B_h = 0.575  # Frequência de amostragem para as ordens harmônicas
-
 Frep = 50    ## frames/s   
 hmax = 13    ## maior harmonico 
 hmag = 0.1   ## magnitude dos harmonicos 
@@ -84,15 +80,62 @@ plt.show(block = False)
 ##    fazendo a psdeudo inversa para calcular os valores estimados de p^
 ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
 phi = sinc.add_column(phi_real,phi_im)
-
 p0 = np.zeros((int(Ns//Nw),26)) + 1j*np.zeros((int(Ns//Nw),26))
-
-for nn in range (int(Ns//Nw)):
+p1 = np.zeros((int(Ns//Nw),26)) + 1j*np.zeros((int(Ns//Nw),26))
+p_less_1 = np.zeros((int(Ns//Nw),26)) + 1j*np.zeros((int(Ns//Nw),26))
+for nn in range (int(Ns//Nw)):## 0 ate 19
     s = x[nn*Nw:(nn+1)*Nw] 
     p_est = np.array([sinc.pseudo_inversa(phi) @ s ])
     p_est = np.reshape(p_est,(78,1))
     p0[nn,:] = sinc.harm_est(p_est)
+    p1[nn,:] = sinc.harm_est_p1(p_est)
+    p_less_1[nn,:] = sinc.harm_est_p_less_1(p_est)
+    
 
+
+## -------------------------------------------------------------------------- --------------------------------------------------------------------------
+##    Calculo do Ph'0  
+##    
+## -------------------------------------------------------------------------- --------------------------------------------------------------------------
+
+ph0 = p0
+    
+ 
+## -------------------------------------------------------------------------- --------------------------------------------------------------------------
+##    Calculo do Ph'1
+## -------------------------------------------------------------------------- --------------------------------------------------------------------------
+   
+    
+ph1 = 2*B_h*(p1 - p_less_1 )
+    
+
+
+## -------------------------------------------------------------------------- --------------------------------------------------------------------------
+##    Calculo do Ph''2
+## -------------------------------------------------------------------------- --------------------------------------------------------------------------
+
+ph2 = 4*(B_h**2)*(2*p1 + 2*p_less_1 - (p0*(np.pi**2))/3)
+
+print(ph2.shape)
+
+## -------------------------------------------------------------------------- --------------------------------------------------------------------------
+##    Erro de Frequencia (FE)
+## -------------------------------------------------------------------------- --------------------------------------------------------------------------
+
+
+
+## -------------------------------------------------------------------------- --------------------------------------------------------------------------
+##    ROCOF
+## -------------------------------------------------------------------------- --------------------------------------------------------------------------
+
+ROCOF1 =  (1/(2*np.pi)) * (np.imag(ph2)*np.imag(p0))/(np.abs(ph0)**2)
+ROCOF2 = -(1/np.pi)*(np.real(ph1)*np.real(ph0)*np.imag(ph1)*np.imag(ph0))/(np.abs(ph0)**4)
+ROCOF = ROCOF1 + ROCOF2
+## -------------------------------------------------------------------------- --------------------------------------------------------------------------
+##    Graficos de Magnitude e Fase respectivamente do fasor  
+##    
+## -------------------------------------------------------------------------- --------------------------------------------------------------------------
+#mag
 plt.figure()
 plt.subplot(311)
 plt.stem(abs(p0[0,:]))
@@ -100,4 +143,37 @@ plt.subplot(312)
 plt.stem(abs(p0[1,:]))
 plt.subplot(313)
 plt.stem(abs(p0[2,:]))
+plt.show(block = False)
+# Fase
+plt.figure()
+plt.subplot(311)
+plt.plot(np.unwrap(np.angle(p0[0,:])))
+plt.subplot(312)
+plt.plot(np.unwrap(np.angle(p0[1,:])))
+plt.subplot(313)
+plt.plot(np.unwrap(np.angle(p0[2,:])))
+plt.show(block = False)
+
+
+## -------------------------------------------------------------------------- --------------------------------------------------------------------------
+##    Graficos de Magnitude e Fase respectivamente do ROCOF  
+##    
+## -------------------------------------------------------------------------- --------------------------------------------------------------------------
+#mag
+plt.figure()
+plt.subplot(311)
+plt.stem(abs(ROCOF[0,:]))
+plt.subplot(312)
+plt.stem(abs(ROCOF[1,:]))
+plt.subplot(313)
+plt.stem(abs(ROCOF[2,:]))
+plt.show(block = True)
+# Fase
+plt.figure()
+plt.subplot(311)
+plt.plot(np.unwrap(np.angle(ROCOF[0,:])))
+plt.subplot(312)
+plt.plot(np.unwrap(np.angle(ROCOF[1,:])))
+plt.subplot(313)
+plt.plot(np.unwrap(np.angle(ROCOF[2,:])))
 plt.show(block = True)
