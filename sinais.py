@@ -65,6 +65,7 @@ def signal_frequency(f1, N, f0, Fs, Frep, hmax, hmag, SNR):
 
 
 
+
 def estima_fundamental(x, wM, f0, Fs):   
     """
     Estima a componente fundamental de um sinal, corrigindo a magnitude, fase, 
