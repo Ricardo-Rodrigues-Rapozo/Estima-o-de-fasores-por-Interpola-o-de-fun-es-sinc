@@ -1,66 +1,27 @@
 import numpy as np 
 import matplotlib.pyplot as plt 
 import sinais 
-
-
-def dadosVect(x):
-    """Pega os dados de magnitude e fase do
-       sinal passado como argumento
-
-    Args:
-        x (np.ndarray ): sinal 
-
-    Returns:
-        ah (np.ndarray): vetor com as magnitudes de x
-        ph (np.ndarray): vetor com as fases de x 
-    """
-    ah = np.abs(x)
-    ph = np.angle(x)
-    return ah,ph
-    
-    
-
-
-
-
-def fasor_harmonico(t,a_h,theta_h):
-    """ Sincrofasor harmonico na posição hth
-
-    Args:
-        t (type): description
-        a_h (type): description
-        theta_h (type): description
-
-    Returns:
-        list : 
-    """
-    
-    for i in range(len(t)):
-        #ph = a_h[i]*np.exp(1j * theta_h)
-        ph = a_h*np.exp(1j *theta_h)
-    return ph
-
-
+from scipy.signal import freqz, lfilter
 
             
 def phi_real(Nw, B_h, K, f0, H, Ts):
     """Calcula a parte real da função phi com base nos parâmetros fornecidos.
 
     Args:
-        t (float): Instante de tempo.
+        Nw(float): Numero de amostras correspontes ai intervalo de obs(Tw)
         B_h (float): Largura de banda associada ao harmônico.
-        k (int): Índice da amostra.
+        K (int): Ordem da interpolação
         f0 (float): Frequência fundamental.
-        h (int): Ordem do harmônico.
-
+        H (int): Ordem do harmônico.
+        Ts (float): Tempo de amostragem 
     Returns:
-        float: Parte real da função phi.
+        float: Parte real da função phi. Retorna uma matriz com dimensões 
+        de (Nw,H(2k+1))  
     """
     
     nTs = np.arange(-Nw//2, Nw//2) * Ts ## numero de amostras * o periodo de amostragem  deve estar entre +-Tw/2 (vetor de tempo do filtro)
-    
     ind = 0
-    phik_h = np.zeros((len(nTs),H*(2*K+1))) + 1j*np.zeros((len(nTs),H*(2*K+1)))
+    phik_h = np.zeros((Nw,H*(2*K+1))) + 1j*np.zeros((Nw,H*(2*K+1)))
     
     for h in range(H):
         for k in np.arange(-K,K+1):
@@ -84,7 +45,8 @@ def phi_im(Nw, B_h, K, f0, H, Ts):
         h (int): Ordem do harmônico.
 
     Returns:
-        float: Parte imaginária da função phi.
+        float: Parte imaginária da função phi. Retorna uma matriz com dimensões 
+        de (Nw,H(2k+1))
     """
     
     nTs = np.arange(-Nw//2, Nw//2) * Ts ## numero de amostras * o periodo de amostragem  deve estar entre +-Tw/2 (vetor de tempo do filtro)
@@ -98,7 +60,6 @@ def phi_im(Nw, B_h, K, f0, H, Ts):
                 k = 0.00001    
             phik_h[:,ind] = (np.sin(np.pi*(2*B_h*nTs-k))/(np.pi*(2*B_h*nTs-k)))*np.exp(-1j*(2*np.pi*(h+1)*f0*nTs))
             ind = ind+1
-    
     return phik_h
 
 
@@ -132,25 +93,98 @@ def pseudo_inversa(m):
     m1 = np.linalg.pinv(m)
     return m1
 
-def harm_est(m):
-    """Recebe uma matriz de estimador de harmonicos no dominio da frequencia
-    e faz a interpolação desses valores de acordo com K. Pega os valores de uma 
-    matriz do tipo p_(-1),p_(0),p_(1), p_(-1),p_(0),p_(1),p_(-1),p_(0),p_(1)...
-    e pega os valores referentes a p_(0) que são referentes ao fasor.
-    
-    Args:
 
-    returns:
-        P(): VALOR DA MAGNITUDE DOS FASORES 
-    
+
+
+def TVE(X, Xr):
+    """_
+Calcula o Total Vector Error (TVE) entre dois vetores de sinais complexos.
+
+    O TVE é uma métrica utilizada para quantificar a diferença entre um vetor de
+    sinal medido ou calculado (X) e um vetor de sinal de referência (Xr). 
+    É expresso como uma porcentagem, que representa a magnitude da diferença
+    entre os vetores complexos, considerando tanto a parte real quanto a imaginária.
+
+    Args:
+    -----------
+    X : array-like
+        Vetor de valores complexos representando o sinal medido ou calculado.
+        
+    Xr : array-like
+        Vetor de valores complexos representando o sinal de referência.
+
+    Return:
+    --------
+    TVE : array-like
+        Vetor de erros totais de vetores (TVE), expresso como uma porcentagem.
+        Cada elemento do vetor corresponde ao TVE calculado para o par 
+        de valores complexos em X e Xr.
     """
-    # m = abs(m)
-    P = np.zeros(26) + 1j*np.zeros(26)
-    cont = 1
-    con = 0
-    for i in range(len(m)):
-        if i == cont:
-            P[con] = m[i]
-            con = con +1
-            cont = cont + 3
-    return P
+    X_re = np.real(X)
+    X_im = np.imag(X)
+
+    Xr_re = np.real(Xr)
+    Xr_im = np.imag(Xr)
+
+    TVE = 100*np.sqrt(((X_re - Xr_re)**2 + (X_im - Xr_im)**2)/(Xr_re**2 + Xr_im**2))
+
+    return TVE
+
+
+def AcertaFase(Fs, f0, f_off, omega, h, f, phasor):
+    """_summary_
+
+    Args:
+        Fs (_type_): _description_
+        f0 (_type_): _description_
+        f_off (_type_): _description_
+        omega (_type_): _description_
+        h (_type_): _description_
+        f (_type_): _description_
+        phasor (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    delta_f = f0 - f_off
+    f_est = f_off
+    wM1_mag = abs(h) ## calcula a magnitude da resposta em frequência do filtro 
+    wM1_ang = np.unwrap(np.angle(h)) # angulo em rad
+
+    idx = np.abs(f - f_est).argmin()
+    idx1 = np.abs(f - 45).argmin() # retorna o indice em que o v
+    idx2 = np.abs(f - 55).argmin()
+    phi = wM1_ang[idx]
+    
+    phi1 = wM1_ang[idx1]  # Fase em idx1 Hz
+    phi2 = wM1_ang[idx2] # Fase em idx2 Hz
+    f1 = f[idx1] # Frequência correspondente a idx1 (~45 Hz)
+    f2 = f[idx2] # Frequência correspondente a idx1 (~55 Hz)
+
+    m = (phi2-phi1)/(f2-f1) ## delta y/ delta x
+
+    phi50 = m*(45-f1) + phi1
+    phi55 = m*(55-f1) + phi1
+
+    Dphi = (delta_f/5)*(phi55-phi50)
+    
+    plt.figure()
+    plt.suptitle('Correção de Fase')
+    ax1 = plt.subplot(211)
+    plt.plot(f,wM1_mag)
+    plt.plot(f[idx],wM1_mag[idx],'mo')  
+    plt.xlabel('Frequência (Hz)')
+    plt.ylabel('Magnitude')
+    #plt.xlim([44,56])
+    ax2 = plt.subplot(212, sharex = ax1)
+    plt.plot(f,wM1_ang)
+    plt.plot(f[idx],phi,'mo') 
+    plt.plot(f1,phi1,'rx')  
+    plt.plot(f2,phi2,'rx')  
+    plt.plot(50,phi50,'go')   
+    plt.xlabel('Frequência (Hz)')
+    plt.ylabel('Fase em °')
+    plt.show(block=False)
+    return Dphi
+
+

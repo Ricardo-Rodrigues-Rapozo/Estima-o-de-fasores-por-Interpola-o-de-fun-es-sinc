@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from scipy.fft import fft, fftfreq
-from scipy.signal import lfilter
+from scipy.signal import lfilter, freqz
 import sinc
 import sinais
 
@@ -27,19 +27,18 @@ Nw = int(N0*(Tw/T0) + 1) # Numero de amostras correspontes ai intervalo de obs(T
 K = 1        # Número de amostras ao redor da amostra central
 B_h = 0.575  # Frequência de amostragem para as ordens harmônicas
 Frep = 50    ## frames/s   
-hmax = 1   ## maior harmonico 
+hmax = 13    ## maior harmonico 
 hmag = 0.1   ## magnitude dos harmonicos 
 SNR  = 6000000   ## relação sinal ruido
-f1 = 51  ## frequencia off nominal 
+f1 = 45  ## frequencia off nominal 
 num_Tw = int(Ns//Nw) #representa a quantidade de janelas de observação Tw que cabem no total de amostras NsNs coletadas.
 
-#print(N0)
+
 ## ---------------------------------------------------------------------------------------------------------------------------------------------------
 ##      Gerando o sinal
 ## ---------------------------------------------------------------------------------------------------------------------------------------------------
 
 x, X, f, ROCOF = sinais.signal_frequency(f1, Ns, f0, Fs, Frep, hmax, hmag, SNR)
-
 
 ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
 ##     Plotando o sinal gerado 
@@ -53,28 +52,13 @@ x, X, f, ROCOF = sinais.signal_frequency(f1, Ns, f0, Fs, Frep, hmax, hmag, SNR)
 # plt.show(block = False)
 
 ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-##     Analise espectral do sinal original 
-## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-# freq = np.arange(0,Fs/Ns+Fs/2,Fs/Ns) ##
-# mag = abs(X[0:1+len(X)//2]) ##
-# plt.figure()
-# plt.stem(mag*2/Ns)
-# plt.grid()
-# plt.show(block = False)
-
-
-## -------------------------------------------------------------------------- --------------------------------------------------------------------------
 ##     Calculo das matrizes phi_real e phi_imaginario 
 ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
 
 phi_real = sinc.phi_real(Nw, B_h, K, f0, hmax, Ts)
 phi_im = sinc.phi_im(Nw, B_h, K, f0, hmax, Ts)
-# print(phi_real.shape)
-# plt.figure()
-# plt.plot(abs(phi_real[:,0]))
-# plt.plot(abs(phi_real[:,1]))
-# plt.plot(abs(phi_real[:,2]))
-# plt.show()
+#print(phi_real.shape)
+
 
 ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
 ##    Juntando as matrizes phi's em uma unica matriz coluna e em seguida 
@@ -83,206 +67,88 @@ phi_im = sinc.phi_im(Nw, B_h, K, f0, hmax, Ts)
 
 phi = sinc.add_column(phi_real,phi_im)
 #print(phi.shape)
+
+
 ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-##        Pegando as amostras p-1  p0   p1
+##    Implementação como Banco de Filtros
+##    
 ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
 
-# p0 = np.zeros((num_Tw,26)) + 1j*np.zeros((num_Tw,26))
-# p1 = np.zeros((num_Tw,26)) + 1j*np.zeros((num_Tw,26))
-# p_less_1 = np.zeros((num_Tw,26)) + 1j*np.zeros((num_Tw,26))
-# #print(num_Tw)
-# for nn in range (num_Tw): ##0 ate 18 isso por conta do 601 e não 600(19)
-#     s = x[nn*Nw:(nn+1)*Nw] #Nw = 601 - janelando x com tamanho Nw
-#     p_est = np.array([sinc.pseudo_inversa(phi) @ s ])
-#     p_est = np.reshape(p_est,(78,1))
-#     p0[nn,:] = sinc.harm_est(p_est)
-#     p1[nn,:] = sinc.harm_est_p1(p_est)
-#     p_less_1[nn,:] = sinc.harm_est_p_less_1(p_est)
-    
 
-# ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-# ##    Calculo do Ph'0  
-# ##    NOSSO FASOR É O ph0
-# ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-# index = np.arange(83,19*601,601)
-# print(index)
-# Xref = X[:,index].T
-
-# ph0 = p0[:,0:13]
-# print(p0[0,:])
-
-# plt.figure()
-# plt.subplot(211)
-# plt.stem(2*abs(ph0[0,:]))
-# plt.stem(abs(Xref[0,:]),'r')
-# plt.subplot(212)
-# plt.stem((np.angle(ph0[0,:]) )*180/np.pi)
-# plt.stem(np.angle(Xref[0,:])*180/np.pi,'r')
-# plt.show(block=False)
-
-# plt.figure()
-# plt.subplot(211)
-# plt.stem(2*abs(ph0[1,:]))
-# plt.stem(abs(Xref[1,:]),'r')
-# plt.subplot(212)
-# plt.stem((np.angle(ph0[1,:]) )*180/np.pi) # + np.array([1,0,1,0,1,0,1,0,1,0,1,0,1])*np.pi
-# plt.stem(np.angle(Xref[1,:])*180/np.pi,'r')
-# plt.show(block=False)
-
-# Implementação como Banco de Filtros
-#-----------------------------------------------------------------------------------------
-gkh = sinc.pseudo_inversa(phi)
+gkh = sinc.pseudo_inversa(phi) ## [resposta ao impulso, Nw] ## 78 pq para cada 13 harmonicos existem -k a k nesse caso 3 para o lado negativo e positivo 
 #print(gkh.shape)
+coeff1 = gkh[1,:] ## pegando a parte k_0 referente ao fasor 
+coeff2 = np.flip(coeff1) ## invertendo o vetor como na equação 
+coeff3 = np.roll(coeff2,Nw-1) ## rolando o vetor por um fator de Nw -1  
 
-coeff = gkh[1,:] ## 
+## -------------------------------------------------------------------------- --------------------------------------------------------------------------
+##    Plot dos coeficientes do banco de filtros
+##    
+## -------------------------------------------------------------------------- --------------------------------------------------------------------------
 
-coeff = np.flip(coeff)## inverteru a matriz 
-coeff = np.roll(coeff,-Nw+1) 
 
-phasor = lfilter(coeff,1,x)## faz  o filtro com os coeficientes de gkh
+# plt.figure()
+# plt.title('Coeficientes do Filtro ')
+# ax1 = plt.subplot(211)
+# plt.stem(np.real(coeff1))
+# plt.stem(np.real(coeff2),'r')
+# plt.stem(np.real(coeff3),'k')
+# plt.grid()
+# ax2 = plt.subplot(212, sharex = ax1)
+# plt.stem(np.imag(coeff1))
+# plt.stem(np.imag(coeff2),'r')
+# plt.stem(np.imag(coeff3),'k')
+# plt.grid()
 
-phasor = phasor*np.exp(-1j*2*np.pi*f0*(Nw/2)/Fs)
-Xmag = (2/np.sqrt(2))*abs(phasor)
-Xpha = np.unwrap(np.angle(phasor)) - 2*np.pi*(f0/Fs)*np.arange(len(phasor))
+# plt.show(block=False)
+
+## -------------------------------------------------------------------------- --------------------------------------------------------------------------
+##    Estimação 
+##    
+## -------------------------------------------------------------------------- --------------------------------------------------------------------------
+
+omega,h = freqz(coeff3,1,4096) ## Frequências normalizadas (em radianos por amostra) nas quais a resposta foi calculada. O intervalo é de 0 a π
+f = omega*Fs/(2*np.pi) # frequencia em hz 
+wM1_mag = abs(h) # 
+wM1_ang = np.unwrap(np.angle(h)) # fase em radianos 
 
 plt.figure()
-plt.subplot(211)
-plt.plot(Xmag)
-plt.plot(abs(X[0,:]),'r')
-plt.subplot(212)
-plt.plot(Xpha*180/np.pi)
-plt.plot(np.unwrap(np.angle(X[0,:]))*180/np.pi,'r')
-plt.show(block=False)
-
-plt.figure()
-plt.plot((Xpha - np.unwrap(np.angle(X[0,:])))*180/np.pi)
+ax1 = plt.subplot(211)
+plt.plot(f,wM1_mag, label='Magnitude do filtro ')
+plt.grid()
+plt.legend()  # Adiciona legenda para magnitude
+ax2 = plt.subplot(212, sharex = ax1)
+plt.plot(f,wM1_ang*180/np.pi, label='Fase em rad do filtro ')
+plt.grid()
+plt.legend()  # Adiciona legenda para magnitude
 plt.show(block=True)
 
+phasor = lfilter(coeff3,1,x)# sinal filtrado 
 
-#print(ph0.shape)     
-## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-##    Calculo do Ph'1
-## -------------------------------------------------------------------------- --------------------------------------------------------------------------   
-    
-# ph1 = 2*B_h*(p1 - p_less_1 )
-    
-# ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-# ##    Calculo do Ph''2
-# ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
+# phasor = phasor*np.exp(1j*2*np.pi*f0*(Nw/2)/Fs)
+Xmag = (2/np.sqrt(2))*abs(phasor) # magnitude do phasor 
+Xpha = np.unwrap(np.angle(phasor)) - 2*np.pi*(f0/Fs)*np.arange(len(phasor)) # rad 
 
-# ph2 = 4*(B_h**2)*(2*p1 + 2*p_less_1 - (p0*(np.pi**2))/3)
-# #print(ph2.shape)
-
-# ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-# ##    Erro de Frequencia (FE)
-# ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-# harm = np.arange(1,hmax+1)
-# Fe = harm*f0 + (np.imag(ph1[:,0:13])*np.imag(ph0[:,0:13]))/(np.abs(ph0[:,0:13]))**2
-
-# ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-# ##    ROCOF
-# ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-
-# ROCOF1 =  (1/(2*np.pi)) * (np.imag(ph2[:,0:13])*np.imag(p0[:,0:13]))/(np.abs(ph0[:,0:13])**2)
-# ROCOF2 = -(1/np.pi)*(np.real(ph1[:,0:13])*np.real(ph0[:,0:13])*np.imag(ph1[:,0:13])*np.imag(ph0[:,0:13]))/(np.abs(ph0[:,0:13])**4)
-# ROCOF = ROCOF1 + ROCOF2
-
-# ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-# ##    Tempo de latencia 
-# ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-
-# T_lat = (Nw - 1)/2*Fs
-
-# ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-# ##    TVE 
-# ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-
-# #print(X.shape) #[num harmonicos, numeros de pontos do sinal]
-# #print(ph0.shape)
-# ph01 = ph0[:,0:13]
-# ph02 = ph0[:,13:26]
-# #print(ph02.shape)
-# ph0_plus = ph0[:,0:13]
-# print(ph0_plus.shape)
-# Xref = sinc.t0(X,hmax)
-# print(Xref.shape)
-# TVE = sinc.TVE(ph0_plus.T,Xref) # de 0 a 19 janelas e 13 harmonicos
-# #print(TVE.shape)
-# plt.figure()
-# plt.stem(TVE[:,0])
-# plt.show(block = False)
-
-# ## -------------------  ------------------------------------------------------- --------------------------------------------------------------------------
-# ##    Graficos de Magnitude e Fase respectivamente do fasor      
-# ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-# #mag
-# plt.figure()
-# plt.subplot(311)
-# plt.stem(2*abs(ph0_plus[0,:]))
-# plt.stem(abs(Xref[:,0]),'r')
-# plt.subplot(312)
-# plt.stem(2*abs(ph0_plus[1,:]))
-# plt.stem(abs(Xref[:,1]),'r')
-# plt.subplot(313)
-# plt.stem(2*abs(ph0_plus[2,:]))
-# plt.stem(abs(Xref[:,2]),'r')
-# plt.show(block = False)
-# # Fase
-# plt.figure()
-# plt.subplot(311)
-# plt.stem(np.angle(ph0_plus[0,:]))
-# plt.stem(np.angle(Xref[:,0]),  'r')
-# plt.subplot(312)
-# plt.stem(np.angle(ph0_plus[1,:]))
-# plt.stem(np.angle(Xref[:,1]),'r')
-
-# plt.subplot(313)
-
-# plt.stem((np.angle(ph0_plus[2,:])))
-# plt.stem(np.angle(Xref[:,2]),'r')
-
-# plt.show(block = True)
-# print(X.shape)
-
-# plt.figure()
-# plt.plot(np.angle(X[0,:]))
-# plt.show()
-# -------------------------------------------------------------------------- --------------------------------------------------------------------------
-##    Graficos de Magnitude e Fase respectivamente do ROCOF  
-## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-#mag
-# plt.figure()
-# plt.subplot(311)
-# plt.stem(abs(ROCOF[0,:]))
-# plt.subplot(312)
-# plt.stem(abs(ROCOF[1,:]))
-# plt.subplot(313)
-# plt.stem(abs(ROCOF[2,:]))
-# plt.show(block = False)
-# # Fase
-# plt.figure()
-# plt.subplot(311)
-# plt.plot(np.unwrap(np.angle(ROCOF[0,:])))
-# plt.subplot(312)
-# plt.plot(np.unwrap(np.angle(ROCOF[1,:])))
-# plt.subplot(313)
-# plt.plot(np.unwrap(np.angle(ROCOF[2,:])))
-# plt.show(block = False)
+Dphi = sinc.AcertaFase(Fs, f0,f1, omega, h, f, phasor)
 
 ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-##    Plot da FE
+##    Comparação entre os estimados e a referencia 
+##    
 ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-# print(Fe.shape)
-# plt.figure()
-# plt.stem(Fe[0,0:13])
-# plt.show()
 
-## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-##    PLot da ROCOF
-## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-# print(ROCOF.shape)
-# plt.figure()
-# plt.stem(ROCOF[0,0:13])
-# plt.show()
+print(Xmag.shape,X.shape)
+plt.figure()
+plt.subplot(211)
+plt.plot(Xmag,'b',label="Mag do sinal estimado")
+plt.plot(abs(X[1,:]),'r',label="Mag harmonico de ref")# X[harmonico , amostras ]
+plt.legend()  # Adiciona legenda para magnitude
+plt.subplot(212)
+plt.plot(Xpha*180/np.pi - Dphi*180/np.pi,'b', label = 'Estimação da fase corrigida')
+plt.plot(np.unwrap(np.angle(X[0,:]))*180/np.pi + 178,'r',label = 'Fase de referencia ')
+plt.legend()  # Adiciona legenda para magnitude
+plt.show(block=True)
 
-# 
+# plt.figure()
+# plt.plot((Xpha - np.unwrap(np.angle(X[0,:])))*180/np.pi) 
+# plt.legend()  # Adiciona legenda para magnitude
+# plt.show(block=True)
