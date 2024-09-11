@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import sinais 
 from scipy.signal import freqz, lfilter
 
-            
+
 def phi_real(Nw, B_h, K, f0, H, Ts):
     """Calcula a parte real da função phi com base nos parâmetros fornecidos.
 
@@ -78,6 +78,7 @@ def add_column(m1,m2):
     m = np.c_[m1, m2]
     return m 
 
+
 def pseudo_inversa(m):
     """Realiza a pseudo inversa de uma matriz nao quadrada lxc 
     e retorna a matriz inversa de tamanho cxl
@@ -131,6 +132,19 @@ Calcula o Total Vector Error (TVE) entre dois vetores de sinais complexos.
     return TVE
 
 
+
+def wrap_to_pi(theta):
+    """
+    Wraps an angle in radians to the range [-pi, pi].
+    
+    Parameters:
+    - theta: The angle in radians to be wrapped.
+    
+    Returns:
+    - The angle wrapped to the range [-pi, pi].
+    """
+    return (theta + np.pi) % (2 * np.pi) - np.pi
+
 def AcertaFase(Fs, f0, f_off, omega, h, f, phasor):
     """_summary_
 
@@ -146,7 +160,7 @@ def AcertaFase(Fs, f0, f_off, omega, h, f, phasor):
     Returns:
         _type_: _description_
     """
-    delta_f = f0 - f_off
+    delta_f = -(f0 - f_off)
     f_est = f_off
     wM1_mag = abs(h) ## calcula a magnitude da resposta em frequência do filtro 
     wM1_ang = np.unwrap(np.angle(h)) # angulo em rad
@@ -155,7 +169,7 @@ def AcertaFase(Fs, f0, f_off, omega, h, f, phasor):
     idx1 = np.abs(f - 45).argmin() # retorna o indice em que o v
     idx2 = np.abs(f - 55).argmin()
     phi = wM1_ang[idx]
-    
+
     phi1 = wM1_ang[idx1]  # Fase em idx1 Hz
     phi2 = wM1_ang[idx2] # Fase em idx2 Hz
     f1 = f[idx1] # Frequência correspondente a idx1 (~45 Hz)
@@ -163,11 +177,12 @@ def AcertaFase(Fs, f0, f_off, omega, h, f, phasor):
 
     m = (phi2-phi1)/(f2-f1) ## delta y/ delta x
 
-    phi50 = m*(45-f1) + phi1
+    phi50 = m*(50-f1) + phi1
     phi55 = m*(55-f1) + phi1
-
+  
     Dphi = (delta_f/5)*(phi55-phi50)
-    
+    print(type(Dphi) ,(phi50))
+    Dphi = wrap_to_pi(Dphi - phi50)
     plt.figure()
     plt.suptitle('Correção de Fase')
     ax1 = plt.subplot(211)
@@ -177,11 +192,11 @@ def AcertaFase(Fs, f0, f_off, omega, h, f, phasor):
     plt.ylabel('Magnitude')
     #plt.xlim([44,56])
     ax2 = plt.subplot(212, sharex = ax1)
-    plt.plot(f,wM1_ang)
-    plt.plot(f[idx],phi,'mo') 
-    plt.plot(f1,phi1,'rx')  
-    plt.plot(f2,phi2,'rx')  
-    plt.plot(50,phi50,'go')   
+    plt.plot(f,wM1_ang*180/np.pi)
+    plt.plot(f[idx],phi*180/np.pi,'mo') 
+    plt.plot(f1,phi1*180/np.pi,'rx')  
+    plt.plot(f2,phi2*180/np.pi,'rx')  
+    plt.plot(50,phi50*180/np.pi,'go')   
     plt.xlabel('Frequência (Hz)')
     plt.ylabel('Fase em °')
     plt.show(block=False)

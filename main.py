@@ -135,7 +135,8 @@ Dphi = sinc.AcertaFase(Fs, f0,f1, omega, h, f, phasor)
 ##    Comparação entre os estimados e a referencia 
 ##    
 ## -------------------------------------------------------------------------- --------------------------------------------------------------------------
-
+l = Xpha*180/np.pi - Dphi*180/np.pi
+l1 = np.unwrap(np.angle(X[0,:]))*180/np.pi
 print(Xmag.shape,X.shape)
 plt.figure()
 plt.subplot(211)
@@ -144,9 +145,13 @@ plt.plot(abs(X[1,:]),'r',label="Mag harmonico de ref")# X[harmonico , amostras ]
 plt.legend()  # Adiciona legenda para magnitude
 plt.subplot(212)
 plt.plot(Xpha*180/np.pi - Dphi*180/np.pi,'b', label = 'Estimação da fase corrigida')
-plt.plot(np.unwrap(np.angle(X[0,:]))*180/np.pi + 178,'r',label = 'Fase de referencia ')
+plt.plot(np.unwrap(np.angle(X[0,:]))*180/np.pi ,'r',label = 'Fase de referencia ')
 plt.legend()  # Adiciona legenda para magnitude
 plt.show(block=True)
+
+plt.figure()
+plt.plot(l - l1)
+plt.show()
 
 # plt.figure()
 # plt.plot((Xpha - np.unwrap(np.angle(X[0,:])))*180/np.pi) 
