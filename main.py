@@ -30,11 +30,11 @@ Frep = 50    ## frames/s
 hmax = 13   ## maior harmonico 
 hmag = 0.1   ## magnitude dos harmonicos 
 SNR  = 6000000   ## relação sinal ruido
-f1 = 45  ## frequencia off nominal 
+f1 = 50.1  ## frequencia off nominal 
 num_Tw = int(Ns//Nw) #representa a quantidade de janelas de observação Tw que cabem no total de amostras NsNs coletadas.
 num_harm = 5 ## numero de harmonico que desejo aferir 
 vectK = 13 ## pega o k_0
-harm_Fasor_Ref = 5
+harm_Fasor_Ref = 4 # posiççao do fasor de referencia X
 
 ## ---------------------------------------------------------------------------------------------------------------------------------------------------
 ##      Gerando o sinal
